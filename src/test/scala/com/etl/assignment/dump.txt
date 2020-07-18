@@ -1,0 +1,260 @@
+
+
+def getCountryWiseData() ={
+
+
+    val countryItemMap = new mutable.HashMap[String, mutable.HashMap[String, List[Product]]]()
+
+    val sourcePath = getClass.getResource("/")
+    val fileFolder = new File(sourcePath.getPath)
+
+    //source file
+    if (fileFolder.exists && fileFolder.isDirectory) {
+
+      val countriesFile = fileFolder.listFiles.toList.filterNot(f => f.getName == "com" || f.getName.toLowerCase() == "meta-inf")
+
+      //country file
+      countriesFile.foreach(countryFolder => {
+
+        if (countryFolder.exists && countryFolder.isDirectory) {
+          val itemFile = countryFolder.listFiles.toList
+
+          val productListMap = new mutable.HashMap[String, List[Product]]()
+          //item file
+          itemFile.foreach(itemFolder => {
+
+            if (itemFolder.exists && itemFolder.isDirectory) {
+              val dataFile = itemFolder.listFiles.toList
+
+              val itemMap = new mutable.HashMap[String, List[Product]]()
+
+              //datafile
+              dataFile.foreach(csvFolder => {
+                if (csvFolder.exists && csvFolder.isDirectory) {
+
+                } else {
+
+                  val lines = Source.fromFile(csvFolder.getPath).getLines.toList.drop(1)
+                  itemMap += (itemFolder.getName.toLowerCase -> getProductBean(lines,itemFolder.getName))//.foreach(println)
+                  println(itemMap.size,itemMap)
+                  println(csvFolder.getPath+"\n")
+                }
+              })
+
+              productListMap ++= itemMap
+              //itemMap.clear()
+              //println("countryItemMap"+countryItemMap.size,countryItemMap + "\n\n")
+            }
+
+          })
+          countryItemMap += (countryFolder.getName.toLowerCase -> productListMap)
+        }
+
+      })
+    }
+
+    countryItemMap.foreach(country => {
+      println(country._1,country._2)
+    })
+    println("\n")
+    countryItemMap
+  }
+
+
+  def getProductBean(list: List[String], product: String): List[Product] = {
+
+    product.toLowerCase match {
+      case BARLEY => {
+        list.map(fig => {
+          val arrFig = fig.split(",")//.map(c => Try{c.toInt}.toOption.getOrElse(0))
+          Barley(arrFig(0),arrFig(1),arrFig(2),arrFig(3),arrFig(4),arrFig(5),arrFig(6),arrFig(7),arrFig(8),arrFig(9))
+        })
+      }
+      case BEEF => {
+        list.map(fig => {
+          val arrFig = fig.split(",")//.map(c => Try{c.toInt}.toOption.getOrElse(0))
+          Beef(arrFig(0),arrFig(1),arrFig(2),arrFig(3),arrFig(4),arrFig(5),arrFig(6),arrFig(7))
+        })
+      }
+      case COTTON => {
+        list.map(fig => {
+          val arrFig = fig.split(",")//.map(c => Try{c.toInt}.toOption.getOrElse(0))
+          Cotton(arrFig(0),arrFig(1),arrFig(2),arrFig(3),arrFig(4),arrFig(5),arrFig(6),arrFig(7),arrFig(8))
+        })
+      }
+      case COTTON => {
+        list.map(fig => {
+          val arrFig = fig.split(",")//.map(c => Try{c.toInt}.toOption.getOrElse(0))
+          Cotton(arrFig(0),arrFig(1),arrFig(2),arrFig(3),arrFig(4),arrFig(5),arrFig(6),arrFig(7),arrFig(8))
+        })
+      }
+      case _ => {
+        List.empty[Product]
+      }
+    }
+
+  }
+
+  def getData(fileFolder: File, countryItemMap: scala.collection.mutable.HashMap[String, String], itemMap: scala.collection.mutable.HashMap[String, List[String]]): Unit = {
+
+    if (fileFolder.exists && fileFolder.isDirectory) {
+      val countriesFile = fileFolder.listFiles.toList
+      val countries = countriesFile.map(_.getName)
+
+      countriesFile.map(file => getData(file, countryItemMap, itemMap))
+      println(countries)
+
+
+    } else {
+
+      val fileStream = getClass.getResourceAsStream(fileFolder.getAbsolutePath)
+      val lines = Source.fromInputStream(fileStream).getLines
+      lines.foreach(line => println(line))
+      lines
+
+    }
+  }
+
+
+
+
+import org.apache.spark.sql.functions._
+    import spark.implicits._
+
+    def nvludf(input: String): Double = {
+      if (input == null || input == "--") {
+        0d
+      } else {
+        input.toDouble
+      }
+    }
+
+    val to_double = udf(nvludf _)
+
+    spark.udf.register("to_double", to_double)
+
+    val usaBarleyDF = spark.read.option("header", "true")
+      .option("inferSchema", "false")
+      .csv("src/main/resources/usa/barley/*").as[Barley]
+      .select(substring(col("year"), 0, 4).as("year"), to_double(col("harvest")).as("harvest"))
+    //.withColumn("product",lit("barley"))
+
+
+    val usaBeefDF = spark.read.option("header", "true")
+      .option("inferSchema", "false")
+      .csv("src/main/resources/usa/beef/*").as[Beef]
+      .select(substring(col("year"), 0, 4).as("year"), to_double(col("slaughter")).as("slaughter"))
+    //.withColumn("product",lit("beef"))
+
+
+    val usaCottonDF = spark.read.option("header", "true")
+      .option("inferSchema", "false")
+      .csv("src/main/resources/usa/cotton/*").as[Cotton]
+      .select(substring(col("year"), 0, 4).as("year"), to_double(col("harvest")).as("harvest"))
+    //.withColumn("product",lit("cotton"))
+
+
+    val worldBarleyDF = spark.read.option("header", "true")
+      .option("inferSchema", "false")
+      .csv("src/main/resources/world/barley/*").as[Barley]
+      .select(substring(col("year"), 0, 4).as("year"), to_double(col("harvest")).as("harvest"))
+    //.withColumn("product",lit("barley"))
+
+
+    val worldBeefDF = spark.read.option("header", "true")
+      .option("inferSchema", "false")
+      .csv("src/main/resources/world/beef/*").as[Beef]
+      .select(substring(col("year"), 0, 4).as("year"), to_double(col("slaughter")).as("slaughter"))
+    //.withColumn("product",lit("beef"))
+
+    val worldCottonDF = spark.read.option("header", "true")
+      .option("inferSchema", "false")
+      .csv("src/main/resources/world/cotton/*").as[Cotton]
+      .select(substring(col("year"), 0, 4).as("year"), to_double(col("harvest")).as("harvest"))
+    //.withColumn("product",lit("cotton"))
+
+
+    val usaToWorldBarleyDF = usaBarleyDF.join(worldBarleyDF, usaBarleyDF("year") === worldBarleyDF("year"))
+      .select(usaBarleyDF("year"), usaBarleyDF("harvest").as("usa_barley_harvest"),
+        worldBarleyDF("harvest").as("world_barley_harvest"))
+
+
+    val usaToWorldBeefDF = usaBeefDF.join(worldBeefDF, usaBeefDF("year") === worldBeefDF("year"))
+      .select(usaBeefDF("year"), usaBeefDF("slaughter").as("usa_beef_slaughter"),
+        worldBeefDF("slaughter").as("world_beef_slaughter"))
+
+    val usaToWorldCottonDF = usaCottonDF.join(worldCottonDF, usaCottonDF("year") === worldCottonDF("year"))
+      .select(usaCottonDF("year"), usaCottonDF("harvest").as("usa_cotton_harvest"),
+        worldCottonDF("harvest").as("world_cotton_harvest"))
+
+
+    usaToWorldBarleyDF.show()
+    usaToWorldBeefDF.show()
+    usaToWorldCottonDF.show()
+
+    val consolidatedDF = usaToWorldBarleyDF
+      .join(usaToWorldBeefDF, usaToWorldBarleyDF("year") === usaToWorldBeefDF("year"))
+      .join(usaToWorldCottonDF, usaToWorldBarleyDF("year") === usaToWorldCottonDF("year"))
+      .select(usaToWorldBarleyDF("year"), usaToWorldBarleyDF("world_barley_harvest"), usaToWorldBarleyDF("usa_barley_harvest"),
+        usaToWorldBeefDF("world_beef_slaughter"), usaToWorldBeefDF("usa_beef_slaughter"),
+        usaToWorldCottonDF("world_cotton_harvest"), usaToWorldCottonDF("usa_cotton_harvest")
+      )
+
+    consolidatedDF.show()
+
+    spark.close()
+
+
+
+    20/07/18 19:20:25 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+    +----+--------------------+------------------+--------------------+------------------+--------------------+------------------+
+    |year|world_barley_harvest|usa_barley_harvest|world_beef_slaughter|usa_beef_slaughter|world_cotton_harvest|usa_cotton_harvest|
+    +----+--------------------+------------------+--------------------+------------------+--------------------+------------------+
+    |2016|             49293.0|            1038.0|            236869.0|               0.0|             29708.0|            3848.0|
+    |2017|             48122.0|             791.0|            242741.0|               0.0|             33408.0|            4492.0|
+    |2018|             48759.0|             800.0|            246795.0|               0.0|             33200.0|            4260.0|
+    |2019|             49890.0|             890.0|            248547.0|               0.0|             34241.0|            4976.0|
+    |2020|             50069.0|             890.0|            262541.0|               0.0|             34222.0|            4493.0|
+    |2021|             50171.0|             931.0|            265166.0|               0.0|             34915.0|            4495.0|
+    |2022|             50238.0|             931.0|            267679.0|               0.0|             36117.0|            4497.0|
+    |2023|             50393.0|             971.0|            270155.0|               0.0|             36521.0|            4540.0|
+    |2024|             50477.0|             971.0|            272532.0|               0.0|             36708.0|            4582.0|
+    |2025|             50604.0|             971.0|            274554.0|               0.0|             36972.0|            4625.0|
+    |2026|             50772.0|             971.0|            276638.0|               0.0|             37138.0|            4667.0|
+    |2027|             50877.0|             971.0|            278708.0|               0.0|             37402.0|            4710.0|
+    |2028|             50996.0|             971.0|            280682.0|               0.0|             37696.0|            4750.0|
+    +----+--------------------+------------------+--------------------+------------------+--------------------+------------------+
+
+    +----+--------------------+---------------------------+--------------------+-------------------------+--------------------+------------------------+
+    |year|world_barley_harvest|usa_barley_contribution_per|world_beef_slaughter|usa_beef_contribution_per|world_cotton_harvest|usa_usa_contribution_per|
+    +----+--------------------+---------------------------+--------------------+-------------------------+--------------------+------------------------+
+    |2016|             49293.0|       0.021057756679447388|            236869.0|                      0.0|             29708.0|     0.12952740002692878|
+    |2017|             48122.0|        0.01643738830472549|            242741.0|                      0.0|             33408.0|      0.1344588122605364|
+    |2018|             48759.0|       0.016407227383662504|            246795.0|                      0.0|             33200.0|     0.12831325301204818|
+    |2019|             49890.0|       0.017839246341952296|            248547.0|                      0.0|             34241.0|     0.14532285856137378|
+    |2020|             50069.0|       0.017775469851604785|            262541.0|                      0.0|             34222.0|       0.131289813570218|
+    |2021|             50171.0|        0.01855653664467521|            265166.0|                      0.0|             34915.0|      0.1287412286982672|
+    |2022|             50238.0|       0.018531788685855328|            267679.0|                      0.0|             36117.0|     0.12451200265802807|
+    |2023|             50393.0|       0.019268549203262358|            270155.0|                      0.0|             36521.0|     0.12431203964842145|
+    |2024|             50477.0|       0.019236483943182045|            272532.0|                      0.0|             36708.0|     0.12482292688242345|
+    |2025|             50604.0|       0.019188206465892026|            274554.0|                      0.0|             36972.0|     0.12509466623390675|
+    |2026|             50772.0|       0.019124714409517057|            276638.0|                      0.0|             37138.0|     0.12566643330281652|
+    |2027|             50877.0|        0.01908524480610099|            278708.0|                      0.0|             37402.0|     0.12592909470081814|
+    |2028|             50996.0|       0.019040709075221585|            280682.0|                      0.0|             37696.0|     0.12600806451612903|
+    +----+--------------------+---------------------------+--------------------+-------------------------+--------------------+------------------------+
+
+    year|world_barley_harvest|usa_barley_contribution_per|world_beef_slaughter|usa_beef_contribution_per|world_cotton_harvest|usa_usa_contribution_per
+    2016|49293.0|0.021057756679447388|236869.0|0.0|29708.0|0.12952740002692878
+    2017|48122.0|0.01643738830472549|242741.0|0.0|33408.0|0.1344588122605364
+    2018|48759.0|0.016407227383662504|246795.0|0.0|33200.0|0.12831325301204818
+    2019|49890.0|0.017839246341952296|248547.0|0.0|34241.0|0.14532285856137378
+    2020|50069.0|0.017775469851604785|262541.0|0.0|34222.0|0.131289813570218
+    2021|50171.0|0.01855653664467521|265166.0|0.0|34915.0|0.1287412286982672
+    2022|50238.0|0.018531788685855328|267679.0|0.0|36117.0|0.12451200265802807
+    2023|50393.0|0.019268549203262358|270155.0|0.0|36521.0|0.12431203964842145
+    2024|50477.0|0.019236483943182045|272532.0|0.0|36708.0|0.12482292688242345
+    2025|50604.0|0.019188206465892026|274554.0|0.0|36972.0|0.12509466623390675
+    2026|50772.0|0.019124714409517057|276638.0|0.0|37138.0|0.12566643330281652
+    2027|50877.0|0.01908524480610099|278708.0|0.0|37402.0|0.12592909470081814
+    2028|50996.0|0.019040709075221585|280682.0|0.0|37696.0|0.12600806451612903
+
