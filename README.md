@@ -13,3 +13,16 @@ I have compared usa data with world data present in above mentioned hierarchy of
 
 I have divided the application into Reader Processor and Reporter interfaces where I have implmented concrete classes w.r.t plain Scala solution
 approach and Spark solution approach.
+
+For plain scala solution access below classes.
+
+1. Q. for barley, find how much world can harvest from 2016/17 – 2028/29 vs % from US e.g. (“USA harvest in year” / “World harvest in year”) x 100
+-> src/main/scala/com/etl/assignment/ScalaSolutionBarley.scala
+
+2. Q. Final Report
+-> src/main/scala/com/etl/assignment/ScalaSolution.scala
+
+For spark solution
+
+2. Q. Final Report
+-> src/main/scala/com/etl/assignment/SparkSolution.scala
